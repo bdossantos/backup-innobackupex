@@ -4,6 +4,8 @@
 #
 # Inspiration : https://gist.github.com/cdamian/931358
 #
+# See also "Xtrabackup in a nutshell" : http://www.fromdual.com/node/835
+#
 
 usage() {
   echo "Usage :
@@ -128,11 +130,14 @@ if ! $(echo 'exit' | mysql -s --host=$host --user=$user $password_opt); then
   exit 1
 fi
 
-latest_full_backup=$(find $full_backup_dir \
-                    -mindepth 1 -maxdepth 1 -type d -printf "%P\n" | \
-                    sort -nr | \
-                    head -1)
+find_latest_full_backup() {
+  find $full_backup_dir \
+  -mindepth 1 -maxdepth 1 -type d -printf "%P\n" | \
+  sort -nr | \
+  head -1
+}
 
+latest_full_backup=$(find_latest_full_backup)
 age=$(stat -c %Y $full_backup_dir/$latest_full_backup)
 
 if [ "$latest_full_backup" -a $(expr $age + $full_backup_life + 5) -ge $start -a ! $full_backup ]; then
@@ -188,7 +193,8 @@ else
     $full_backup_dir > $log 2>&1
 
   if test ! -z $apply_log; then
-    notify 'Prepare full backup'
+    latest_full_backup=$(find_latest_full_backup)
+    notify "Prepare latest full backup : $full_backup_dir/$latest_full_backup"
 
     ionice -c 2 -n 7 \
     nice -n 15 \
@@ -197,9 +203,7 @@ else
       $password_opt \
       --parallel=$processor_count \
       --apply-log \
-      --rebuild-indexes \
-      --redo-only \
-      $full_backup_dir > $log 2>&1
+      $full_backup_dir/$latest_full_backup > $log 2>&1
   fi
 fi
 
