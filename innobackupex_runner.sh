@@ -46,8 +46,7 @@ while test -n "$1"; do
       shift
       ;;
     --apply-log|-a)
-      apply_log=$2
-      shift
+      apply_log=1
       ;;
     --full-backup|-f)
       full_backup=1
